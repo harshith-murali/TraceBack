@@ -70,3 +70,15 @@
     linear-gradient(to bottom, hsl(var(--border) / 0.45) 1px, transparent 1px);
   background-size: 40px 40px;
 }
+
+@keyframes nav-progress {
+  0% {
+    transform: translateX(-120%);
+  }
+  55% {
+    transform: translateX(120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createReport } from "@/actions/reports";
+import { PendingOverlay } from "@/components/pending-overlay";
 import { SubmitButton } from "@/components/submit-button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +24,7 @@ export function ReportForm({ postId }: { postId: string }) {
       </CardHeader>
       <CardContent>
         <form action={formAction} aria-busy={pending} className="grid gap-4">
+          <PendingOverlay show={pending} label="Submitting report..." />
           {state.error ? (
             <Alert className="border-destructive/40">
               <AlertTitle>Could not submit report</AlertTitle>

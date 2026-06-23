@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { createClaimRequest } from "@/actions/claims";
+import { PendingOverlay } from "@/components/pending-overlay";
 import { SubmitButton } from "@/components/submit-button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,7 @@ export function ClaimForm({ postId }: { postId: string }) {
           aria-busy={pending}
           className="grid gap-4"
         >
+          <PendingOverlay show={pending} label="Submitting claim request..." />
           {state.error ? (
             <Alert className="border-destructive/40">
               <AlertTitle>Could not submit claim</AlertTitle>

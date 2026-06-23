@@ -29,24 +29,31 @@ export async function uploadImage(file: File, folder = "campus-lost-found") {
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  return new Promise<{ secureUrl: string; publicId: string }>((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: "image",
-        transformation: [{ quality: "auto", fetch_format: "auto" }]
-      },
-      (error, result) => {
-        if (error || !result) {
-          reject(error ?? new Error("Cloudinary upload failed."));
-          return;
+  try {
+    return await new Promise<{ secureUrl: string; publicId: string }>((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder,
+          resource_type: "image",
+          transformation: [{ quality: "auto", fetch_format: "auto" }]
+        },
+        (error, result) => {
+          if (error || !result) {
+            reject(error ?? new Error("Cloudinary upload failed."));
+            return;
+          }
+          resolve({ secureUrl: result.secure_url, publicId: result.public_id });
         }
-        resolve({ secureUrl: result.secure_url, publicId: result.public_id });
-      }
-    );
+      );
 
-    stream.end(buffer);
-  });
+      stream.end(buffer);
+    });
+  } catch (error) {
+    if (typeof error === "object" && error && "http_code" in error && (error as { http_code?: unknown }).http_code === 403) {
+      throw new Error("Cloudinary rejected the upload. Check that signed uploads are enabled and the Cloudinary API key/secret match this cloud.");
+    }
+    throw error;
+  }
 }
 
 export async function deleteImage(publicId: string) {

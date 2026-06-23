@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useActionState } from "react";
 import { useForm } from "react-hook-form";
 import { ImagePlus } from "lucide-react";
+import { PendingOverlay } from "@/components/pending-overlay";
 import { SubmitButton } from "@/components/submit-button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,7 @@ export function PostForm({
       aria-busy={pending}
       className="grid gap-5"
     >
+      <PendingOverlay show={pending} label={post ? "Uploading changes..." : "Uploading images and creating post..."} />
       {state.error ? (
         <Alert className="border-destructive/40">
           <AlertTitle>Could not save post</AlertTitle>
