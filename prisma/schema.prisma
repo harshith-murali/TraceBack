@@ -1,0 +1,228 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+enum PostType {
+  LOST
+  FOUND
+}
+
+enum PostStatus {
+  OPEN
+  MATCHED
+  RETURNED
+  HIDDEN
+}
+
+enum Category {
+  ELECTRONICS
+  ID_CARDS
+  WALLETS
+  KEYS
+  BAGS
+  BOOKS
+  CLOTHING
+  ACCESSORIES
+  DOCUMENTS
+  OTHER
+}
+
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ReportReason {
+  SPAM
+  FAKE_ITEM
+  ABUSIVE_CONTENT
+  DUPLICATE
+  WRONG_CATEGORY
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  RESOLVED
+}
+
+enum NotificationType {
+  POST_CREATED
+  CLAIM_RECEIVED
+  CLAIM_APPROVED
+  CLAIM_REJECTED
+  STRONG_MATCH
+  POST_RETURNED
+  REPORT_CREATED
+}
+
+enum AuditAction {
+  POST_HIDDEN
+  POST_UNHIDDEN
+  POST_DELETED
+  REPORT_REVIEWED
+  CLAIM_REVIEWED
+  MATCH_REVIEWED
+}
+
+model User {
+  id            String         @id @default(cuid())
+  clerkId       String         @unique
+  email         String         @unique
+  name          String?
+  imageUrl      String?
+  role          UserRole       @default(STUDENT)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  profile       Profile?
+  posts         Post[]
+  claims        ClaimRequest[] @relation("ClaimantClaims")
+  reports       Report[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+}
+
+model Profile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  department   String?
+  year         String?
+  phone        String?
+  campusArea   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Post {
+  id                  String            @id @default(cuid())
+  ownerId             String
+  type                PostType
+  status              PostStatus        @default(OPEN)
+  title               String
+  description         String
+  category            Category
+  location            String
+  campusArea          String
+  eventDate           DateTime
+  contactInfo         String
+  reward              String?
+  identifyingDetails  String?
+  hiddenReason        String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  owner               User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  images              PostImage[]
+  claims              ClaimRequest[]
+  reports             Report[]
+  lostMatches         MatchSuggestion[] @relation("LostPostMatches")
+  foundMatches        MatchSuggestion[] @relation("FoundPostMatches")
+
+  @@index([type, status, category])
+  @@index([campusArea])
+  @@index([createdAt])
+}
+
+model PostImage {
+  id        String   @id @default(cuid())
+  postId    String
+  url       String
+  publicId  String
+  alt       String?
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model ClaimRequest {
+  id                       String      @id @default(cuid())
+  postId                   String
+  claimantId               String
+  status                   ClaimStatus @default(PENDING)
+  message                  String
+  proofOfOwnership         String
+  contactPreference        String
+  supportingImageUrls      String[]    @default([])
+  supportingImagePublicIds String[]    @default([])
+  ownerNote                String?
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
+  post                     Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  claimant                 User        @relation("ClaimantClaims", fields: [claimantId], references: [id], onDelete: Cascade)
+
+  @@index([postId, status])
+  @@index([claimantId, status])
+}
+
+model MatchSuggestion {
+  id          String   @id @default(cuid())
+  lostPostId  String
+  foundPostId String
+  confidence  Int
+  signals     Json
+  dismissed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lostPost    Post     @relation("LostPostMatches", fields: [lostPostId], references: [id], onDelete: Cascade)
+  foundPost   Post     @relation("FoundPostMatches", fields: [foundPostId], references: [id], onDelete: Cascade)
+
+  @@unique([lostPostId, foundPostId])
+  @@index([confidence])
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  postId      String
+  reporterId  String
+  reason      ReportReason
+  details     String?
+  status      ReportStatus @default(OPEN)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  post        Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporter    User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, reporterId, reason])
+  @@index([status])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  actorId     String
+  action      AuditAction
+  targetType  String
+  targetId    String
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+  actor       User        @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([action])
+  @@index([targetType, targetId])
+}
