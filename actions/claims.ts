@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { ClaimStatus, PostStatus, PostType } from "@prisma/client";
+import { actionError, type ActionState } from "@/lib/action-state";
 import { requireUser } from "@/lib/auth/guards";
 import { uploadImage } from "@/lib/cloudinary";
 import { prisma } from "@/lib/db/prisma";
@@ -15,67 +16,72 @@ function supportImages(formData: FormData) {
     .filter((item): item is File => item instanceof File && item.size > 0);
 }
 
-export async function createClaimRequest(formData: FormData) {
-  const user = await requireUser();
-  assertRateLimit(`claim:${user.id}`, 5, 60_000);
+export async function createClaimRequest(_state: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const user = await requireUser();
+    assertRateLimit(`claim:${user.id}`, 5, 60_000);
 
-  const payload = claimSchema.parse({
-    postId: formData.get("postId"),
-    message: formData.get("message"),
-    proofOfOwnership: formData.get("proofOfOwnership"),
-    contactPreference: formData.get("contactPreference")
-  });
+    const payload = claimSchema.parse({
+      postId: formData.get("postId"),
+      message: formData.get("message"),
+      proofOfOwnership: formData.get("proofOfOwnership"),
+      contactPreference: formData.get("contactPreference")
+    });
 
-  const post = await prisma.post.findUnique({
-    where: { id: payload.postId },
-    include: { owner: true }
-  });
+    const post = await prisma.post.findUnique({
+      where: { id: payload.postId },
+      include: { owner: true }
+    });
 
-  if (!post || post.status !== PostStatus.OPEN || post.type !== PostType.FOUND) {
-    throw new Error("Claims are available only for open found-item posts.");
-  }
-
-  if (post.ownerId === user.id) {
-    throw new Error("You cannot claim your own post.");
-  }
-
-  const activeClaim = await prisma.claimRequest.findFirst({
-    where: {
-      postId: post.id,
-      claimantId: user.id,
-      status: { in: [ClaimStatus.PENDING, ClaimStatus.APPROVED] }
+    if (!post || post.status !== PostStatus.OPEN || post.type !== PostType.FOUND) {
+      throw new Error("Claims are available only for open found-item posts.");
     }
-  });
 
-  if (activeClaim) {
-    throw new Error("You already have an active claim for this post.");
-  }
-
-  const uploaded = await Promise.all(supportImages(formData).map((image) => uploadImage(image, `campus-lost-found/claims/${user.id}`)));
-
-  const claim = await prisma.claimRequest.create({
-    data: {
-      postId: post.id,
-      claimantId: user.id,
-      message: payload.message,
-      proofOfOwnership: payload.proofOfOwnership,
-      contactPreference: payload.contactPreference,
-      supportingImageUrls: uploaded.map((image) => image.secureUrl),
-      supportingImagePublicIds: uploaded.map((image) => image.publicId)
+    if (post.ownerId === user.id) {
+      throw new Error("You cannot claim your own post.");
     }
-  });
 
-  await notifyUser({
-    userId: post.ownerId,
-    type: "CLAIM_RECEIVED",
-    title: "Claim request received",
-    body: `${user.name ?? "A student"} sent a claim request for "${post.title}".`,
-    href: `/dashboard/claims`,
-    email: true
-  });
+    const activeClaim = await prisma.claimRequest.findFirst({
+      where: {
+        postId: post.id,
+        claimantId: user.id,
+        status: { in: [ClaimStatus.PENDING, ClaimStatus.APPROVED] }
+      }
+    });
 
-  revalidatePath(`/posts/${post.id}`);
-  revalidatePath("/dashboard/claims");
+    if (activeClaim) {
+      throw new Error("You already have an active claim for this post.");
+    }
+
+    const uploaded = await Promise.all(supportImages(formData).map((image) => uploadImage(image, `campus-lost-found/claims/${user.id}`)));
+
+    await prisma.claimRequest.create({
+      data: {
+        postId: post.id,
+        claimantId: user.id,
+        message: payload.message,
+        proofOfOwnership: payload.proofOfOwnership,
+        contactPreference: payload.contactPreference,
+        supportingImageUrls: uploaded.map((image) => image.secureUrl),
+        supportingImagePublicIds: uploaded.map((image) => image.publicId)
+      }
+    });
+
+    await notifyUser({
+      userId: post.ownerId,
+      type: "CLAIM_RECEIVED",
+      title: "Claim request received",
+      body: `${user.name ?? "A student"} sent a claim request for "${post.title}".`,
+      href: `/dashboard/claims`,
+      email: true
+    });
+
+    revalidatePath(`/posts/${post.id}`);
+    revalidatePath("/dashboard/claims");
+    return {};
+  } catch (error) {
+    return actionError(error, "Could not submit the claim.");
+  }
 }
 
 export async function decideClaim(formData: FormData) {

@@ -39,7 +39,7 @@ export default async function DashboardMatchesPage() {
                 <Link href={`/posts/${match.foundPostId}`}>Open</Link>
               </Button>
               <form action={dismissMatch.bind(null, match.id)}>
-                <SubmitButton variant="ghost" size="sm">
+                <SubmitButton variant="ghost" size="sm" pendingText="Dismissing...">
                   Dismiss
                 </SubmitButton>
               </form>

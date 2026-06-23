@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { PostStatus } from "@prisma/client";
+import { actionError, type ActionState } from "@/lib/action-state";
 import { requirePostOwner, requireUser } from "@/lib/auth/guards";
 import { deleteImage, uploadImage } from "@/lib/cloudinary";
 import { prisma } from "@/lib/db/prisma";
@@ -32,101 +33,109 @@ function imageFiles(formData: FormData, name = "images") {
     .filter((item): item is File => item instanceof File && item.size > 0);
 }
 
-export async function createPost(formData: FormData) {
-  const user = await requireUser();
-  assertRateLimit(`post:${user.id}`, 6, 60_000);
+export async function createPost(_state: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const user = await requireUser();
+    assertRateLimit(`post:${user.id}`, 6, 60_000);
 
-  const payload = postPayload(formData);
-  const images = imageFiles(formData);
-  if (images.length === 0) {
-    throw new Error("Upload at least one image.");
-  }
-
-  const uploaded = await Promise.all(images.map((image) => uploadImage(image, `campus-lost-found/posts/${user.id}`)));
-
-  const post = await prisma.post.create({
-    data: {
-      ownerId: user.id,
-      ...payload,
-      reward: payload.reward || null,
-      identifyingDetails: payload.identifyingDetails || null,
-      images: {
-        create: uploaded.map((image, index) => ({
-          url: image.secureUrl,
-          publicId: image.publicId,
-          alt: payload.title,
-          position: index
-        }))
-      }
+    const payload = postPayload(formData);
+    const images = imageFiles(formData);
+    if (images.length === 0) {
+      throw new Error("Upload at least one image.");
     }
-  });
 
-  await notifyUser({
-    userId: user.id,
-    type: "POST_CREATED",
-    title: "Post created",
-    body: `"${post.title}" is now live on Campus Lost & Found.`,
-    href: `/posts/${post.id}`,
-    email: true
-  });
+    const uploaded = await Promise.all(images.map((image) => uploadImage(image, `campus-lost-found/posts/${user.id}`)));
 
-  await runMatchingForPost(post.id);
-
-  revalidatePath("/");
-  revalidatePath("/posts");
-  redirect(`/posts/${post.id}`);
-}
-
-export async function updatePost(postId: string, formData: FormData) {
-  await requirePostOwner(postId);
-  const payload = postPayload(formData);
-  const newImages = imageFiles(formData);
-  const deleteIds = formData
-    .getAll("deleteImageIds")
-    .map(String)
-    .filter(Boolean);
-
-  const existingImages = await prisma.postImage.findMany({ where: { postId } });
-  const remainingCount = existingImages.length - deleteIds.length + newImages.length;
-  if (remainingCount <= 0) {
-    throw new Error("A post must keep at least one image.");
-  }
-
-  const uploaded = await Promise.all(newImages.map((image) => uploadImage(image, `campus-lost-found/posts/${postId}`)));
-
-  await prisma.$transaction(async (tx) => {
-    await tx.post.update({
-      where: { id: postId },
+    const post = await prisma.post.create({
       data: {
+        ownerId: user.id,
         ...payload,
         reward: payload.reward || null,
-        identifyingDetails: payload.identifyingDetails || null
+        identifyingDetails: payload.identifyingDetails || null,
+        images: {
+          create: uploaded.map((image, index) => ({
+            url: image.secureUrl,
+            publicId: image.publicId,
+            alt: payload.title,
+            position: index
+          }))
+        }
       }
     });
 
-    if (deleteIds.length > 0) {
-      await tx.postImage.deleteMany({ where: { id: { in: deleteIds }, postId } });
+    await notifyUser({
+      userId: user.id,
+      type: "POST_CREATED",
+      title: "Post created",
+      body: `"${post.title}" is now live on Campus Lost & Found.`,
+      href: `/posts/${post.id}`,
+      email: true
+    });
+
+    await runMatchingForPost(post.id);
+
+    revalidatePath("/");
+    revalidatePath("/posts");
+    redirect(`/posts/${post.id}`);
+  } catch (error) {
+    return actionError(error, "Could not create the post.");
+  }
+}
+
+export async function updatePost(postId: string, _state: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    await requirePostOwner(postId);
+    const payload = postPayload(formData);
+    const newImages = imageFiles(formData);
+    const deleteIds = formData
+      .getAll("deleteImageIds")
+      .map(String)
+      .filter(Boolean);
+
+    const existingImages = await prisma.postImage.findMany({ where: { postId } });
+    const remainingCount = existingImages.length - deleteIds.length + newImages.length;
+    if (remainingCount <= 0) {
+      throw new Error("A post must keep at least one image.");
     }
 
-    if (uploaded.length > 0) {
-      await tx.postImage.createMany({
-        data: uploaded.map((image, index) => ({
-          postId,
-          url: image.secureUrl,
-          publicId: image.publicId,
-          alt: payload.title,
-          position: existingImages.length + index
-        }))
+    const uploaded = await Promise.all(newImages.map((image) => uploadImage(image, `campus-lost-found/posts/${postId}`)));
+
+    await prisma.$transaction(async (tx) => {
+      await tx.post.update({
+        where: { id: postId },
+        data: {
+          ...payload,
+          reward: payload.reward || null,
+          identifyingDetails: payload.identifyingDetails || null
+        }
       });
-    }
-  });
 
-  await Promise.all(existingImages.filter((image) => deleteIds.includes(image.id)).map((image) => deleteImage(image.publicId).catch(() => undefined)));
-  await runMatchingForPost(postId);
+      if (deleteIds.length > 0) {
+        await tx.postImage.deleteMany({ where: { id: { in: deleteIds }, postId } });
+      }
 
-  revalidatePath(`/posts/${postId}`);
-  revalidatePath("/posts");
-  redirect(`/posts/${postId}`);
+      if (uploaded.length > 0) {
+        await tx.postImage.createMany({
+          data: uploaded.map((image, index) => ({
+            postId,
+            url: image.secureUrl,
+            publicId: image.publicId,
+            alt: payload.title,
+            position: existingImages.length + index
+          }))
+        });
+      }
+    });
+
+    await Promise.all(existingImages.filter((image) => deleteIds.includes(image.id)).map((image) => deleteImage(image.publicId).catch(() => undefined)));
+    await runMatchingForPost(postId);
+
+    revalidatePath(`/posts/${postId}`);
+    revalidatePath("/posts");
+    redirect(`/posts/${postId}`);
+  } catch (error) {
+    return actionError(error, "Could not save the post.");
+  }
 }
 
 export async function deletePost(postId: string) {

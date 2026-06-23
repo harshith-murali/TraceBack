@@ -42,7 +42,7 @@ export default async function DashboardPage() {
             Notifications
           </CardTitle>
           <form action={markNotificationsRead}>
-            <SubmitButton variant="outline" size="sm">
+            <SubmitButton variant="outline" size="sm" pendingText="Marking...">
               Mark read
             </SubmitButton>
           </form>

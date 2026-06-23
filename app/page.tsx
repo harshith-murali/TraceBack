@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { PostStatus } from "@prisma/client";
 import { PostCard } from "@/components/post-card";
+import { SearchSubmitButton } from "@/components/search-submit-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -52,9 +53,7 @@ export default async function HomePage() {
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input name="q" placeholder="Search wallet, ID card, library..." className="h-11 pl-9" />
               </div>
-              <Button type="submit" size="lg">
-                Search
-              </Button>
+              <SearchSubmitButton />
             </form>
             <div className="mt-5 flex flex-wrap gap-3">
               <Button asChild>

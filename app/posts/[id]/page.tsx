@@ -153,10 +153,10 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                         <input type="hidden" name="claimId" value={claim.id} />
                         <Textarea name="ownerNote" placeholder="Optional note to claimant" />
                         <div className="flex gap-2">
-                          <SubmitButton name="status" value="APPROVED" size="sm">
+                          <SubmitButton name="status" value="APPROVED" size="sm" pendingText="Updating...">
                             Approve
                           </SubmitButton>
-                          <SubmitButton name="status" value="REJECTED" variant="outline" size="sm">
+                          <SubmitButton name="status" value="REJECTED" variant="outline" size="sm" pendingText="Updating...">
                             Reject
                           </SubmitButton>
                         </div>
@@ -194,7 +194,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                         <Link href={`/posts/${related.id}`}>Open</Link>
                       </Button>
                       <form action={dismissMatch.bind(null, match.id)}>
-                        <SubmitButton variant="ghost" size="sm">
+                        <SubmitButton variant="ghost" size="sm" pendingText="Dismissing...">
                           Dismiss
                         </SubmitButton>
                       </form>
@@ -221,13 +221,13 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                 </Link>
               </Button>
               <form action={markPostReturned.bind(null, post.id)}>
-                <SubmitButton className="w-full" variant="secondary">
+                <SubmitButton className="w-full" variant="secondary" pendingText="Updating...">
                   <CheckCircle2 className="h-4 w-4" />
                   Mark returned
                 </SubmitButton>
               </form>
               <form action={deletePost.bind(null, post.id)}>
-                <SubmitButton className="w-full" variant="destructive">
+                <SubmitButton className="w-full" variant="destructive" pendingText="Deleting...">
                   <Trash2 className="h-4 w-4" />
                   Delete post
                 </SubmitButton>

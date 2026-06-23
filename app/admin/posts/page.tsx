@@ -55,13 +55,13 @@ export default async function AdminPostsPage() {
                   <input type="hidden" name="postId" value={post.id} />
                   <input type="hidden" name="hidden" value={post.status === "HIDDEN" ? "false" : "true"} />
                   <Input name="reason" placeholder="Reason" className="h-8 w-28" />
-                  <SubmitButton size="sm" variant="outline">
+                  <SubmitButton size="sm" variant="outline" pendingText="Saving...">
                     {post.status === "HIDDEN" ? "Unhide" : "Hide"}
                   </SubmitButton>
                 </form>
                 <form action={deletePostAsAdmin}>
                   <input type="hidden" name="postId" value={post.id} />
-                  <SubmitButton size="sm" variant="destructive">
+                  <SubmitButton size="sm" variant="destructive" pendingText="Deleting...">
                     Delete
                   </SubmitButton>
                 </form>

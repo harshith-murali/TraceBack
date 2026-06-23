@@ -1,8 +1,8 @@
 import { Search } from "lucide-react";
 import { categories, campusAreas, postStatuses, postTypes, sortOptions } from "@/lib/constants";
 import { formatCategory } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchSubmitButton } from "@/components/search-submit-button";
 import { Select } from "@/components/ui/select";
 
 export function SearchFilters({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
@@ -56,7 +56,7 @@ export function SearchFilters({ searchParams }: { searchParams: Record<string, s
           </option>
         ))}
       </Select>
-      <Button type="submit">Filter</Button>
+      <SearchSubmitButton label="Filter" pendingLabel="Filtering..." />
     </form>
   );
 }

@@ -51,7 +51,7 @@ export default async function AdminReportsPage() {
                     <option value="REVIEWED">Reviewed</option>
                     <option value="RESOLVED">Resolved</option>
                   </Select>
-                  <SubmitButton size="sm" variant="outline">
+                  <SubmitButton size="sm" variant="outline" pendingText="Saving...">
                     Save
                   </SubmitButton>
                 </form>
@@ -59,7 +59,7 @@ export default async function AdminReportsPage() {
                   <input type="hidden" name="postId" value={report.postId} />
                   <input type="hidden" name="hidden" value="true" />
                   <Input name="reason" placeholder="Hide reason" className="h-8 w-28" />
-                  <SubmitButton size="sm" variant="destructive">
+                  <SubmitButton size="sm" variant="destructive" pendingText="Hiding...">
                     Hide post
                   </SubmitButton>
                 </form>

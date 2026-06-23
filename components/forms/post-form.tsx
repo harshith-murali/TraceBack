@@ -2,9 +2,11 @@
 
 import type { Post, PostImage } from "@prisma/client";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useActionState } from "react";
 import { useForm } from "react-hook-form";
 import { ImagePlus } from "lucide-react";
 import { SubmitButton } from "@/components/submit-button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { categories, campusAreas } from "@/lib/constants";
+import { initialActionState, type ActionState } from "@/lib/action-state";
 import { postSchema } from "@/lib/validators";
 import { formatCategory } from "@/lib/utils";
 
@@ -21,9 +24,10 @@ export function PostForm({
   action,
   post
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   post?: ExistingPost;
 }) {
+  const [state, formAction, pending] = useActionState(action, initialActionState);
   const {
     register,
     trigger,
@@ -49,13 +53,21 @@ export function PostForm({
 
   return (
     <form
-      action={action}
+      action={formAction}
       onSubmit={async (event) => {
         const valid = await trigger();
         if (!valid) event.preventDefault();
       }}
+      aria-busy={pending}
       className="grid gap-5"
     >
+      {state.error ? (
+        <Alert className="border-destructive/40">
+          <AlertTitle>Could not save post</AlertTitle>
+          <AlertDescription>{state.error}</AlertDescription>
+        </Alert>
+      ) : null}
+      <fieldset disabled={pending} className="contents">
       <Card>
         <CardHeader>
           <CardTitle>{post ? "Edit post" : "Create post"}</CardTitle>
@@ -152,8 +164,9 @@ export function PostForm({
         <Button type="button" variant="outline" onClick={() => history.back()}>
           Cancel
         </Button>
-        <SubmitButton>{post ? "Save changes" : "Create post"}</SubmitButton>
+        <SubmitButton pendingText={post ? "Saving..." : "Creating..."}>{post ? "Save changes" : "Create post"}</SubmitButton>
       </div>
+      </fieldset>
     </form>
   );
 }

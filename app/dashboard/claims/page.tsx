@@ -70,10 +70,10 @@ export default async function DashboardClaimsPage() {
                     <input type="hidden" name="claimId" value={claim.id} />
                     <Textarea name="ownerNote" placeholder="Optional note" />
                     <div className="flex gap-2">
-                      <SubmitButton name="status" value="APPROVED" size="sm">
+                      <SubmitButton name="status" value="APPROVED" size="sm" pendingText="Updating...">
                         Approve
                       </SubmitButton>
-                      <SubmitButton name="status" value="REJECTED" variant="outline" size="sm">
+                      <SubmitButton name="status" value="REJECTED" variant="outline" size="sm" pendingText="Updating...">
                         Reject
                       </SubmitButton>
                     </div>

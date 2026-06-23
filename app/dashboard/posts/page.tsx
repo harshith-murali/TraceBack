@@ -42,7 +42,7 @@ export default async function DashboardPostsPage() {
           <div className="flex items-center justify-between rounded-lg border bg-card p-3">
             <StatusBadge status={post.status} />
             <form action={markPostReturned.bind(null, post.id)}>
-              <SubmitButton variant="outline" size="sm">
+              <SubmitButton variant="outline" size="sm" pendingText="Updating...">
                 Mark returned
               </SubmitButton>
             </form>
